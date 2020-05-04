@@ -52,35 +52,31 @@ static unsigned char HexToDec(char a_HexChar)
 
 
 
-AString & vPrintf(AString & str, const char * format, fmt::printf_args args)
+AString & vPrintf(AString & a_String, const char * a_Format, fmt::printf_args a_ArgList)
 {
-	ASSERT(format != nullptr);
-	fmt::memory_buffer Buffer;
-	fmt::printf(Buffer, fmt::to_string_view(format), args);
-	str.assign(Buffer.data(), Buffer.size());
-	return str;
+	ASSERT(a_Format != nullptr);
+	a_String = fmt::vsprintf(a_Format, a_ArgList);
+	return a_String;
 }
 
 
 
 
 
-AString vPrintf(const char * format, fmt::printf_args args)
+AString vPrintf(const char * a_Format, fmt::printf_args a_ArgList)
 {
-	ASSERT(format != nullptr);
-	return fmt::vsprintf(format, args);
+	ASSERT(a_Format != nullptr);
+	return fmt::vsprintf(a_Format, a_ArgList);
 }
 
 
 
 
 
-AString & vAppendPrintf(AString & a_String, const char * format, fmt::printf_args args)
+AString & vAppendPrintf(AString & a_String, const char * a_Format, fmt::printf_args a_ArgList)
 {
-	ASSERT(format != nullptr);
-	fmt::memory_buffer Buffer;
-	fmt::printf(Buffer, fmt::to_string_view(format), args);
-	a_String.append(Buffer.data(), Buffer.size());
+	ASSERT(a_Format != nullptr);
+	a_String += vPrintf(a_Format, a_ArgList);
 	return a_String;
 }
 

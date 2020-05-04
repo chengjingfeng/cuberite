@@ -63,16 +63,16 @@ void cLogger::LogSimple(AString a_Message, eLogLevel a_LogLevel)
 
 
 
-void cLogger::vLogPrintf(const char * a_Format, eLogLevel a_LogLevel, fmt::printf_args a_ArgList)
+void cLogger::LogPrintf(const char * a_Format, eLogLevel a_LogLevel, fmt::printf_args a_ArgList)
 {
-	LogSimple(vPrintf(a_Format, a_ArgList), a_LogLevel);
+	LogSimple(fmt::vsprintf(a_Format, a_ArgList), a_LogLevel);
 }
 
 
 
 
 
-void cLogger::vLogFormat(const char * a_Format, eLogLevel a_LogLevel, fmt::format_args a_ArgList)
+void cLogger::LogFormat(const char * a_Format, eLogLevel a_LogLevel, fmt::format_args a_ArgList)
 {
 	LogSimple(fmt::vformat(a_Format, a_ArgList), a_LogLevel);
 }
@@ -119,7 +119,7 @@ void cLogger::DetachListener(cListener * a_Listener)
 
 void vFLOG(const char * a_Format, fmt::format_args a_ArgList)
 {
-	cLogger::GetInstance().vLogFormat(a_Format, cLogger::llRegular, a_ArgList);
+	cLogger::GetInstance().LogFormat(a_Format, cLogger::llRegular, a_ArgList);
 }
 
 
@@ -128,7 +128,7 @@ void vFLOG(const char * a_Format, fmt::format_args a_ArgList)
 
 void vFLOGINFO(const char * a_Format, fmt::format_args a_ArgList)
 {
-	cLogger::GetInstance().vLogFormat( a_Format, cLogger::llInfo, a_ArgList);
+	cLogger::GetInstance().LogFormat( a_Format, cLogger::llInfo, a_ArgList);
 }
 
 
@@ -137,7 +137,7 @@ void vFLOGINFO(const char * a_Format, fmt::format_args a_ArgList)
 
 void vFLOGWARNING(const char * a_Format, fmt::format_args a_ArgList)
 {
-	cLogger::GetInstance().vLogFormat( a_Format, cLogger::llWarning, a_ArgList);
+	cLogger::GetInstance().LogFormat( a_Format, cLogger::llWarning, a_ArgList);
 }
 
 
@@ -146,7 +146,7 @@ void vFLOGWARNING(const char * a_Format, fmt::format_args a_ArgList)
 
 void vFLOGERROR(const char * a_Format, fmt::format_args a_ArgList)
 {
-	cLogger::GetInstance().vLogFormat(a_Format, cLogger::llError, a_ArgList);
+	cLogger::GetInstance().LogFormat(a_Format, cLogger::llError, a_ArgList);
 }
 
 
@@ -155,7 +155,7 @@ void vFLOGERROR(const char * a_Format, fmt::format_args a_ArgList)
 
 void vLOG(const char * a_Format, fmt::printf_args a_ArgList)
 {
-	cLogger::GetInstance().vLogPrintf(a_Format, cLogger::llRegular, a_ArgList);
+	cLogger::GetInstance().LogPrintf(a_Format, cLogger::llRegular, a_ArgList);
 }
 
 
@@ -164,7 +164,7 @@ void vLOG(const char * a_Format, fmt::printf_args a_ArgList)
 
 void vLOGINFO(const char * a_Format, fmt::printf_args a_ArgList)
 {
-	cLogger::GetInstance().vLogPrintf(a_Format, cLogger::llInfo, a_ArgList);
+	cLogger::GetInstance().LogPrintf(a_Format, cLogger::llInfo, a_ArgList);
 }
 
 
@@ -173,7 +173,7 @@ void vLOGINFO(const char * a_Format, fmt::printf_args a_ArgList)
 
 void vLOGWARNING(const char * a_Format, fmt::printf_args a_ArgList)
 {
-	cLogger::GetInstance().vLogPrintf(a_Format, cLogger::llWarning, a_ArgList);
+	cLogger::GetInstance().LogPrintf(a_Format, cLogger::llWarning, a_ArgList);
 }
 
 
@@ -182,9 +182,5 @@ void vLOGWARNING(const char * a_Format, fmt::printf_args a_ArgList)
 
 void vLOGERROR(const char * a_Format, fmt::printf_args a_ArgList)
 {
-	cLogger::GetInstance().vLogPrintf( a_Format, cLogger::llError, a_ArgList);
+	cLogger::GetInstance().LogPrintf( a_Format, cLogger::llError, a_ArgList);
 }
-
-
-
-

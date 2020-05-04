@@ -59,20 +59,10 @@ public:
 	};
 
 	/** Log a message formatted with a printf style formatting string. */
-	void vLogPrintf(const char * a_Format, eLogLevel a_LogLevel, fmt::printf_args a_ArgList);
-	template <typename... Args>
-	void LogPrintf(const char * a_Format, eLogLevel a_LogLevel, const Args & ... args)
-	{
-		vLogPrintf(a_Format, a_LogLevel, fmt::make_printf_args(args...));
-	}
+	void LogPrintf(const char * a_Format, eLogLevel a_LogLevel, fmt::printf_args a_ArgList);
 
 	/** Log a message formatted with a python style formatting string. */
-	void vLogFormat(const char * a_Format, eLogLevel a_LogLevel, fmt::format_args a_ArgList);
-	template <typename... Args>
-	void LogFormat(const char * a_Format, eLogLevel a_LogLevel, const Args & ... args)
-	{
-		vLogFormat(a_Format, a_LogLevel, fmt::make_format_args(args...));
-	}
+	void LogFormat(const char * a_Format, eLogLevel a_LogLevel, fmt::format_args a_ArgList);
 
 	/** Logs the simple text message at the specified log level. */
 	void LogSimple(AString a_Message, eLogLevel a_LogLevel = llRegular);
