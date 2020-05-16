@@ -1,6 +1,9 @@
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/lib/libevent/include)
+include_directories(SYSTEM "${CMAKE_BINARY_DIR}/lib/libevent/include")
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/lib/mbedtls/include)
+
+find_package(Threads REQUIRED)
 
 # Create a single Network library that contains all the networking code:
 set (Network_SRCS
@@ -55,10 +58,8 @@ add_library(Network
 )
 
 target_link_libraries(Network event_core event_extra fmt::fmt mbedtls)
-if (WIN32)
-	target_link_libraries(Network ws2_32.lib)
-else()
-	target_link_libraries(Network event_pthreads_static)
+if(NOT WIN32)
+	target_link_libraries(Network event_pthreads Threads::Threads)
 endif()
 
 
