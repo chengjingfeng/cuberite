@@ -67,7 +67,7 @@ before_script: mv CachedCMakeCache/CMakeCache.txt . || true
 script: ./travisbuild.sh
 
 # Overwrite the cache back into the save directory
-before_cache: mv --force CMakeCache.txt CachedCMakeCache/
+before_cache: mv -f CMakeCache.txt CachedCMakeCache/
 
 notifications:
   email:

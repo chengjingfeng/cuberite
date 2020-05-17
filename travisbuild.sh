@@ -16,7 +16,8 @@ if [ `which ccache` ]; then
 	CACHE_ARGS="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 
 	echo "Using ccache installed at $(which ccache)"
-	ccache --max-size=3G
+	ccache --max-size=1G
+	ccache --zero-stats
 fi
 
 # Work around a Clang + ccache issue with failing builds by disabling
@@ -35,7 +36,6 @@ cmake --build . --parallel 2;
 if [ `which ccache` ]; then
 	echo "Built with ccache, outputting cache stats..."
 	ccache --show-stats
-	ccache --zero-stats # Avoid dirtying
 fi
 
 echo "Testing..."
