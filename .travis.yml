@@ -2,7 +2,7 @@ language: cpp
 cache:
   ccache: true
   directories:
-  - CMakeCache.txt
+  - CachedCMakeCache
 
 # Use Linux by default
 os: linux
@@ -59,7 +59,15 @@ jobs:
       before_install: *use-cmake
       env: *Debug
 
+# Populate the CMake cache from Travis cache, if any
+# Unfortunately Travis can only cache directories, not single files
+before_script: mv CachedCMakeCache/CMakeCache.txt . || true
+
+# Run the build and tests
 script: ./travisbuild.sh
+
+# Overwrite the cache back into the save directory
+before_cache: mv --force CMakeCache.txt CachedCMakeCache/
 
 notifications:
   email:

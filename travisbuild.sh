@@ -19,8 +19,8 @@ if [ `which ccache` ]; then
 	ccache --max-size=3G
 fi
 
-# Work around a Clang + ccache issue with failing
-# builds by disabling precompiled headers
+# Work around a Clang + ccache issue with failing builds by disabling
+# precompiled headers. Turn off LTO for faster build speeds
 cmake . -DCMAKE_BUILD_TYPE=${TRAVIS_CUBERITE_BUILD_TYPE} \
         -DBUILD_TOOLS=Yes \
         -DPRECOMPILE_HEADERS=No \
