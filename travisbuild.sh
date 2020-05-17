@@ -17,12 +17,12 @@ if [ `which ccache` ]; then
 
 	echo "Using ccache installed at $(which ccache)"
 	ccache --max-size=3G
-	ccache --zero-stats
 fi
 
 # Work around a Clang + ccache issue with failing
 # builds by disabling precompiled headers
-cmake . -DBUILD_TOOLS=Yes \
+cmake . -DCMAKE_BUILD_TYPE=${TRAVIS_CUBERITE_BUILD_TYPE} \
+        -DBUILD_TOOLS=Yes \
         -DPRECOMPILE_HEADERS=No \
         -DSELF_TEST=Yes \
         -DUNITY_BUILDS=${TRAVIS_CUBERITE_UNITY_BUILDS-Yes} \
@@ -35,6 +35,7 @@ cmake --build . --parallel 2;
 if [ `which ccache` ]; then
 	echo "Built with ccache, outputting cache stats..."
 	ccache --show-stats
+	ccache --zero-stats # Avoid dirtying
 fi
 
 echo "Testing..."

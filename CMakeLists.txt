@@ -22,7 +22,7 @@ project(
 )
 
 option(BUILD_TOOLS "Sets up additional executables to be built along with the server" OFF)
-option(WHOLE_PROGRAM_OPTIMISATION "Enables link time optimisation" ON)
+option(WHOLE_PROGRAM_OPTIMISATION "Enables link time optimisation for Release" ON)
 option(PRECOMPILE_HEADERS "Enable precompiled headers for faster builds" ON)
 option(SELF_TEST "Enables testing code to be built" OFF)
 option(UNITY_BUILDS "Enables source aggregation for faster builds" ON)
