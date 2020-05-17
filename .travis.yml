@@ -2,7 +2,8 @@ language: cpp
 cache:
   ccache: true
   directories:
-  - CachedCMakeCache
+    - CachedCMakeCache # Avoid rediscovery of types sizes
+    - Testing          # Store ctest cost data
 
 # Use Linux by default
 os: linux
