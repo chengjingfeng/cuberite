@@ -94,11 +94,4 @@ cache:
 #####################
 after_build:
 - cd Server
-- echo Cuberite %APPVEYOR_JOB_NAME%-#%APPVEYOR_BUILD_NUMBER%  1>buildinfo.txt
 - Install\PackWindowsExecutables.cmd
-- if defined APPVEYOR_PULL_REQUEST_NUMBER appveyor exit
-- appveyor PushArtifact Cuberite.zip -FileName Cuberite.zip
-- appveyor PushArtifact PDBs.zip -FileName PDBs.zip
-- appveyor PushArtifact AutoAPI.zip -FileName AutoAPI.zip
-- appveyor PushArtifact ManualAPI.zip -FileName ManualAPI.zip
-- appveyor PushArtifact .luacheckrc -FileName .luacheckrc
