@@ -16,15 +16,15 @@ environment:
   CUBERITE_BUILD_DATETIME: "%APPVEYOR_REPO_COMMIT_TIMESTAMP%"
 
   matrix:
-  - job_name: Windows x64 Debug
+  - job_name: Windows-x64-Debug
     configuration: Debug
     BUILD_DIR: Debug x64
 
-  - job_name: Windows x86
+  - job_name: Windows-x86
     configuration: Release
     BUILD_DIR: Release x86
 
-  - job_name: Windows x64
+  - job_name: Windows-x64
     configuration: Release
     BUILD_DIR: Release x64
 
@@ -55,7 +55,7 @@ for:
 -
   matrix:
     only:
-      - job_name: Windows x64 Debug
+      - job_name: Windows-x64-Debug
 
   before_build:
   # TODO: re-add -DSELF_TEST=YES -DBUILD_TOOLS=YES once PCH for tools enabled (too slow otherwise)
@@ -67,7 +67,7 @@ for:
 -
   matrix:
     only:
-      - job_name: Windows x86
+      - job_name: Windows-x86
 
   before_build:
   - cmake -G "Visual Studio 16 2019" ..
@@ -78,7 +78,7 @@ for:
 -
   matrix:
     only:
-      - job_name: Windows x64
+      - job_name: Windows-x64
 
   before_build:
   - cmake -G "Visual Studio 16 2019" -A "x64" ..

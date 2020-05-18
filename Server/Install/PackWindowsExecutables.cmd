@@ -5,11 +5,11 @@
 
 :: Only test that the server runs for pull requests
 :: Don't upload any artifacts until it's merged into master
-if defined APPVEYOR_PULL_REQUEST_NUMBER (
-	echo stop  1>>cmds.txt
-	Cuberite --port 32767  0<cmds.txt
-	exit /b
-)
+::if defined APPVEYOR_PULL_REQUEST_NUMBER (
+::	echo stop  1>>cmds.txt
+::	Cuberite --port 32767  0<cmds.txt
+::	exit /b
+::)
 
 :: Main executables
 echo Cuberite %APPVEYOR_JOB_NAME%-#%APPVEYOR_BUILD_NUMBER%  1>buildinfo.txt
