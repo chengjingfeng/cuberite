@@ -43,6 +43,7 @@ endforeach()
 target_include_directories(
 	${CMAKE_PROJECT_NAME} SYSTEM PRIVATE
 	"${CMAKE_CURRENT_BINARY_DIR}/lib/libevent/include" # TODO: remove when updating libevent
+	lib/asio/asio/include
 	lib/libevent/include
 	lib/mbedtls/include
 	lib/TCLAP/include
