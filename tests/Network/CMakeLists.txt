@@ -1,6 +1,6 @@
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/lib/libevent/include)
-include_directories(SYSTEM "${CMAKE_BINARY_DIR}/lib/libevent/include")
+include_directories(SYSTEM "${LIBEVENT_INCLUDE_DIRS}")
 include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/lib/mbedtls/include)
 
 find_package(Threads REQUIRED)
