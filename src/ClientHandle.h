@@ -10,6 +10,7 @@
 #pragma once
 
 #include "OSSupport/Network.h"
+#include "ByteBuffer.h"
 #include "Defines.h"
 #include "Scoreboard.h"
 #include "UI/SlotArea.h"
@@ -428,6 +429,9 @@ private:
 	cChunkCoordsList                                   m_SentChunks;    // Chunks that are currently sent to the client
 
 	std::unique_ptr<cProtocol> m_Protocol;
+
+	/** Buffer for received protocol data. */
+	cByteBuffer m_ReceivedData;
 
 	/** Protects m_IncomingData against multithreaded access. */
 	cCriticalSection m_CSIncomingData;

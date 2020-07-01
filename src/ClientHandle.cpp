@@ -71,6 +71,7 @@ cClientHandle::cClientHandle(const AString & a_IPString, int a_ViewDistance) :
 	m_CurrentViewDistance(a_ViewDistance),
 	m_RequestedViewDistance(a_ViewDistance),
 	m_IPString(a_IPString),
+	m_ReceivedData(8 KiB),  // We need a larger buffer to support BungeeCord - it sends one huge packet at the start
 	m_Player(nullptr),
 	m_CachedSentChunk(0, 0),
 	m_HasSentDC(false),
@@ -98,8 +99,6 @@ cClientHandle::cClientHandle(const AString & a_IPString, int a_ViewDistance) :
 	m_LastPlacedSign(0, -1, 0),
 	m_ProtocolVersion(0)
 {
-	m_Protocol = cpp14::make_unique<cProtocolRecognizer>(this);
-
 	s_ClientCount++;  // Not protected by CS because clients are always constructed from the same thread
 	m_UniqueID = s_ClientCount;
 	m_PingStartTime = std::chrono::steady_clock::now();
@@ -2540,7 +2539,14 @@ void cClientHandle::SendDisconnect(const AString & a_Reason)
 	if (!m_HasSentDC)
 	{
 		LOGD("Sending a DC: \"%s\"", StripColorCodes(a_Reason).c_str());
-		m_Protocol->SendDisconnect(a_Reason);
+		if (m_Protocol != nullptr)
+		{
+			m_Protocol->SendDisconnect(a_Reason);
+		}
+		else
+		{
+			cProtocolRecognizer::SendDisconnect(*this, a_Reason);
+		}
 		m_HasSentDC = true;
 		// csKicked means m_Link will be shut down on the next tick. The
 		// disconnect packet data is sent in the tick thread so the connection
@@ -3343,9 +3349,24 @@ void cClientHandle::ProcessProtocolInOut(void)
 		cCSLock Lock(m_CSIncomingData);
 		std::swap(IncomingData, m_IncomingData);
 	}
+
 	if (!IncomingData.empty())
 	{
-		m_Protocol->DataReceived(IncomingData.data(), IncomingData.size());
+		// Modifiable string view to support the protocol recogniser
+		// lopping off the initial handshake bytes:
+		std::string_view Data(IncomingData);
+
+		if (m_Protocol == nullptr)
+		{
+			m_Protocol = cProtocolRecognizer::TryRecogniseProtocol(*this, m_ReceivedData, Data);
+		}
+
+		// Has the protocol recogniser succesfully identified?
+		if (m_Protocol != nullptr)
+		{
+			// TODO: make it take a string view and our m_ReceivedData
+			m_Protocol->DataReceived(Data.data(), Data.size());
+		}
 	}
 
 	// Send any queued outgoing data:
@@ -3354,10 +3375,13 @@ void cClientHandle::ProcessProtocolInOut(void)
 		cCSLock Lock(m_CSOutgoingData);
 		std::swap(OutgoingData, m_OutgoingData);
 	}
-	auto link = m_Link;
-	if ((link != nullptr) && !OutgoingData.empty())
+
+	// Capture the link to prevent it being reset between the null check and the Send:
+	auto Link = m_Link;
+
+	if ((Link != nullptr) && !OutgoingData.empty())
 	{
-		link->Send(OutgoingData.data(), OutgoingData.size());
+		Link->Send(OutgoingData.data(), OutgoingData.size());
 	}
 }
 
