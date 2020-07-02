@@ -72,6 +72,45 @@ cClientHandle::cClientHandle(const AString & a_IPString, int a_ViewDistance) :
 	m_RequestedViewDistance(a_ViewDistance),
 	m_IPString(a_IPString),
 	m_ReceivedData(8 KiB),  // We need a larger buffer to support BungeeCord - it sends one huge packet at the start
+	m_ProtocolDataInHandler(
+		[this](std::string_view a_Data)
+		{
+			try
+			{
+				// Note that a_Data is assigned to a subview containing the data to pass to m_Protocol or UnsupportedPing
+
+				m_Protocol = cProtocolRecognizer::TryRecogniseProtocol(*this, m_ReceivedData, a_Data);
+				if (m_Protocol == nullptr)
+				{
+					return;
+				}
+
+				// The protocol recogniser succesfully identified, switch mode:
+				m_ProtocolDataInHandler = [this](const std::string_view a_In)
+				{
+					// TODO: make it take our m_ReceivedData
+					m_Protocol->DataReceived(a_In.data(), a_In.size());
+				};
+			}
+			catch (const cProtocolRecognizer::sUnsupportedButPingableProtocolException &)
+			{
+				// Got a server list ping for an unrecognised version,
+				// switch into responding to unknown protocols mode:
+				m_ProtocolDataInHandler = [this](const std::string_view a_In)
+				{
+					cProtocolRecognizer::RespondToUnsupportedProtocolPing(*this, m_ReceivedData, a_In);
+				};
+			}
+			catch (const std::exception & Oops)
+			{
+				Kick(Oops.what());
+				return;
+			}
+
+			// Explicitly process any remaining data with the new handler:
+			m_ProtocolDataInHandler(a_Data);
+		}
+	),
 	m_Player(nullptr),
 	m_CachedSentChunk(0, 0),
 	m_HasSentDC(false),
@@ -3352,21 +3391,7 @@ void cClientHandle::ProcessProtocolInOut(void)
 
 	if (!IncomingData.empty())
 	{
-		// Modifiable string view to support the protocol recogniser
-		// lopping off the initial handshake bytes:
-		std::string_view Data(IncomingData);
-
-		if (m_Protocol == nullptr)
-		{
-			m_Protocol = cProtocolRecognizer::TryRecogniseProtocol(*this, m_ReceivedData, Data);
-		}
-
-		// Has the protocol recogniser succesfully identified?
-		if (m_Protocol != nullptr)
-		{
-			// TODO: make it take a string view and our m_ReceivedData
-			m_Protocol->DataReceived(Data.data(), Data.size());
-		}
+		m_ProtocolDataInHandler(IncomingData);
 	}
 
 	// Send any queued outgoing data:

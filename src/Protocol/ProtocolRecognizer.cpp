@@ -26,17 +26,14 @@
 
 namespace cProtocolRecognizer
 {
-	struct cUnsupportedButPingableProtocolException : public std::runtime_error
+	sUnsupportedButPingableProtocolException::sUnsupportedButPingableProtocolException() :
+		std::runtime_error("")
 	{
-		explicit cUnsupportedButPingableProtocolException() :
-			std::runtime_error("")
-		{
-		}
-	};
+	}
 
-	struct cTriedToJoinWithUnsupportedProtocolException : public std::runtime_error
+	struct sTriedToJoinWithUnsupportedProtocolException : public std::runtime_error
 	{
-		explicit cTriedToJoinWithUnsupportedProtocolException(const std::string & a_Message) :
+		explicit sTriedToJoinWithUnsupportedProtocolException(const std::string & a_Message) :
 			std::runtime_error(a_Message)
 		{
 		}
@@ -45,43 +42,53 @@ namespace cProtocolRecognizer
 	/** Tries to recognize a protocol in the lengthed family (1.7+), based on m_Buffer; returns true if recognized.
 	The packet length and type have already been read, type is 0
 	The number of bytes remaining in the packet is passed as a_PacketLengthRemaining. */
-	static std::unique_ptr<cProtocol> TryRecognizeLengthedProtocol(cClientHandle & a_Client, cByteBuffer & a_Buffer, UInt32 a_PacketLengthRemaining)
+	static std::unique_ptr<cProtocol> TryRecognizeLengthedProtocol(cClientHandle & a_Client, cByteBuffer & a_Buffer, std::string_view & a_Data)
 	{
 		UInt32 PacketType;
-		if (!a_Buffer.ReadVarInt(PacketType))
-		{
-			return {};
-		}
-		if (PacketType != 0x00)
+		UInt32 ProtocolVersion;
+		AString ServerAddress;
+		UInt16 ServerPort;
+		UInt32 NextState;
+
+		if (!a_Buffer.ReadVarInt(PacketType) || (PacketType != 0x00))
 		{
 			// Not an initial handshake packet, we don't know how to talk to them
 			LOGINFO("Client \"%s\" uses an unsupported protocol (lengthed, initial packet %u)",
 				a_Client.GetIPString().c_str(), PacketType
 			);
-			a_Client.Kick("Unsupported protocol version");
-			return {};
+
+			throw sTriedToJoinWithUnsupportedProtocolException(
+				Printf("Your client isn't supported.\nTry connecting with Minecraft " MCS_CLIENT_VERSIONS, ProtocolVersion)
+			);
 		}
-		UInt32 ProtocolVersion;
-		if (!a_Buffer.ReadVarInt(ProtocolVersion))
+
+		if (
+			!a_Buffer.ReadVarInt(ProtocolVersion) ||
+			!a_Buffer.ReadVarUTF8String(ServerAddress) ||
+			!a_Buffer.ReadBEUInt16(ServerPort) ||
+			!a_Buffer.ReadVarInt(NextState)
+		)
 		{
-			return {};
+			// TryRecognizeProtocol guarantees that we will have as much
+			// data to read as the client claims in the protocol length field:
+			throw sTriedToJoinWithUnsupportedProtocolException("Incorrect amount of data received - hacked client?");
 		}
+
+		// TODO: this should be a protocol property, not ClientHandle:
 		a_Client.SetProtocolVersion(ProtocolVersion);
-		AString ServerAddress;
-		UInt16 ServerPort;
-		UInt32 NextState;
-		if (!a_Buffer.ReadVarUTF8String(ServerAddress))
-		{
-			return {};
-		}
-		if (!a_Buffer.ReadBEUInt16(ServerPort))
-		{
-			return {};
-		}
-		if (!a_Buffer.ReadVarInt(NextState))
-		{
-			return {};
-		}
+
+		// The protocol has just been recognized, advance data start
+		// to after the handshake and leave the rest to the protocol:
+		a_Data = a_Data.substr(a_Buffer.GetUsedSpace() - a_Buffer.GetReadableSpace());
+
+		// We read more than we can handle, purge the rest:
+		[[maybe_unused]] const bool Success =
+			a_Buffer.SkipRead(a_Buffer.GetReadableSpace());
+		ASSERT(Success);
+
+		// All good, eat up the data:
+		a_Buffer.CommitRead();
+
 		switch (ProtocolVersion)
 		{
 			case PROTO_VERSION_1_8_0: return std::make_unique<cProtocol_1_8_0>(&a_Client, ServerAddress, ServerPort, NextState);
@@ -104,12 +111,12 @@ namespace cProtocolRecognizer
 
 				if (NextState != 1)
 				{
-					throw cTriedToJoinWithUnsupportedProtocolException(
+					throw sTriedToJoinWithUnsupportedProtocolException(
 						Printf("Unsupported protocol version %u.\nTry connecting with Minecraft " MCS_CLIENT_VERSIONS, ProtocolVersion)
 					);
 				}
 
-				throw cUnsupportedButPingableProtocolException();
+				throw sUnsupportedButPingableProtocolException();
 			}
 		}
 	}
@@ -118,31 +125,30 @@ namespace cProtocolRecognizer
 
 
 
-	static std::unique_ptr<cProtocol> TryRecognizeProtocol(cClientHandle & a_Client, cByteBuffer & a_Buffer)
+	static std::unique_ptr<cProtocol> TryRecognizeProtocol(cClientHandle & a_Client, cByteBuffer & a_Buffer, std::string_view & a_Data)
 	{
 		// NOTE: If a new protocol is added or an old one is removed, adjust MCS_CLIENT_VERSIONS and MCS_PROTOCOL_VERSIONS macros in the header file
 
 		// Lengthed protocol, try if it has the entire initial handshake packet:
 		UInt32 PacketLen;
-		UInt32 ReadSoFar = static_cast<UInt32>(a_Buffer.GetReadableSpace());
 		if (!a_Buffer.ReadVarInt(PacketLen))
 		{
 			// Not enough bytes for the packet length, keep waiting
 			return {};
 		}
-		ReadSoFar -= static_cast<UInt32>(a_Buffer.GetReadableSpace());
+
 		if (!a_Buffer.CanReadBytes(PacketLen))
 		{
 			// Not enough bytes for the packet, keep waiting
+			// More of a sanity check to make sure no one tries anything funny (since ReadXXX can wait for data themselves):
 			return {};
 		}
 
-		auto Protocol = TryRecognizeLengthedProtocol(a_Client, a_Buffer, PacketLen - ReadSoFar);
-		if (Protocol != nullptr)
-		{
-			// The protocol has been recognized, initialize it:
-			Protocol->Initialize(a_Client);
-		}
+		auto Protocol = TryRecognizeLengthedProtocol(a_Client, a_Buffer, a_Data);
+		ASSERT(Protocol != nullptr);
+
+		// The protocol has been recognized, initialize it:
+		Protocol->Initialize(a_Client);
 
 		return Protocol;
 	}
@@ -151,8 +157,7 @@ namespace cProtocolRecognizer
 
 
 
-	/** Sends one or more packets inside a cByteBuffer.
-	Can do this here since handshake packets are neither compressed nor encrypted.
+	/** Sends one packet inside a cByteBuffer.
 	This is used only when handling an outdated server ping. */
 	static void SendPacket(cClientHandle & a_Client, cByteBuffer & a_OutPacketBuffer)
 	{
@@ -284,46 +289,32 @@ namespace cProtocolRecognizer
 
 	std::unique_ptr<cProtocol> TryRecogniseProtocol(cClientHandle & a_Client, cByteBuffer & a_SeenData, std::string_view & a_Data)
 	{
+		// We read more than the handshake packet here, oh well.
 		if (!a_SeenData.Write(a_Data.data(), a_Data.size()))
 		{
-			// We read more than the handshake packet here, oh well.
-
-			a_Client.Kick("Too much data was sent");
+			a_Client.Kick("Your client sent too much data; please try again later.");
 			return {};
 		}
 
-		try
+		auto Protocol = TryRecognizeProtocol(a_Client, a_SeenData, a_Data);
+		if (Protocol == nullptr)
 		{
-			auto Protocol = TryRecognizeProtocol(a_Client, a_SeenData);
-			if (Protocol != nullptr)
-			{
-				// The protocol has just been recognized, advance data start
-				// to after the handshake and leave the rest to the protocol:
-				a_Data = a_Data.substr(a_SeenData.GetUsedSpace() - a_SeenData.GetReadableSpace());
-
-				// We read more than we can handle, purge the rest:
-#ifdef NDEBUG
-				a_SeenData.SkipRead(a_SeenData.GetReadableSpace());
-#else
-				ASSERT(a_SeenData.SkipRead(a_SeenData.GetReadableSpace()));
-#endif
-			}
-			else
-			{
-				a_SeenData.ResetRead();
-			}
-
-			return Protocol;
+			a_SeenData.ResetRead();
 		}
-		catch (const cUnsupportedButPingableProtocolException &)
+
+		return Protocol;
+	}
+
+
+
+
+
+	void RespondToUnsupportedProtocolPing(cClientHandle & a_Client, cByteBuffer & a_SeenData, const std::string_view a_Data)
+	{
+		if (!a_SeenData.Write(a_Data.data(), a_Data.size()))
 		{
-			// A server list ping for an unrecognised version is currently occuring
-			// Fall through to handler
-		}
-		catch (const std::exception & Oops)
-		{
-			a_Client.Kick(Oops.what());
-			return {};
+			a_Client.Kick("Server list ping failed, too much data.");
+			return;
 		}
 
 		cByteBuffer OutPacketBuffer(6 KiB);
@@ -340,32 +331,28 @@ namespace cProtocolRecognizer
 			)
 			{
 				// Not enough data
+				a_SeenData.ResetRead();
 				break;
 			}
 
 			if ((PacketID == 0x00) && (PacketLen == 1))  // Request packet
 			{
 				HandlePacketStatusRequest(a_Client, OutPacketBuffer);
+				SendPacket(a_Client, OutPacketBuffer);
 			}
 			else if ((PacketID == 0x01) && (PacketLen == 9))  // Ping packet
 			{
 				HandlePacketStatusPing(a_Client, a_SeenData, OutPacketBuffer);
+				SendPacket(a_Client, OutPacketBuffer);
 			}
 			else
 			{
-				a_Client.Kick("Server list ping failed, unrecognized packet");
-				return {};
+				a_Client.Kick("Server list ping failed, unrecognized packet.");
+				return;
 			}
+
+			a_SeenData.CommitRead();
 		}
-
-		// Flush out all queued uncompressed, unencrypted data:
-		SendPacket(a_Client, OutPacketBuffer);
-
-		// In order to avoid making a whole dummy cProtocol just for old clients,
-		// we depend on cClientHandle calling us to process old pings. We don't
-		// persist state here, so restart parsing from scratch next time and return nothing:
-		a_SeenData.ResetRead();
-		return {};
 	}
 
 

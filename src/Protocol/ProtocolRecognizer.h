@@ -19,6 +19,11 @@
 protocol version instance and redirects everything to it. */
 namespace cProtocolRecognizer
 {
+	struct sUnsupportedButPingableProtocolException : public std::runtime_error
+	{
+		explicit sUnsupportedButPingableProtocolException();
+	};
+
 	enum
 	{
 		PROTO_VERSION_1_8_0  = 47,
@@ -38,12 +43,16 @@ namespace cProtocolRecognizer
 	/** Translates protocol version number into protocol version text: 49 -> "1.4.4" */
 	AString GetVersionTextFromInt(int a_ProtocolVersion);
 
-	/** Tries to recognize protocol based on a_Data and a_ReceivedData contents.
+	/** Tries to recognize a protocol based on a_Data and a_ReceivedData contents.
 	a_SeenData represents a buffer for the incoming data.
-	Returns the procotol if recognized. */
+	a_Data contains a view of data that were just received. It is replaced with a sub-view, with handshake packet removed.
+	Returns the protocol if recognized. */
 	std::unique_ptr<cProtocol> TryRecogniseProtocol(cClientHandle & a_Client, cByteBuffer & a_SeenData, std::string_view & a_Data);
 
-	/* Sends a disconnect to the client as a result of a recognition error.
+	/** Replies to a client sending pings using a version we don't support. */
+	void RespondToUnsupportedProtocolPing(cClientHandle & a_Client, cByteBuffer & a_SeenData, const std::string_view a_Data);
+
+	/** Sends a disconnect to the client as a result of a recognition error.
 	This function can be used to disconnect before any protocol has been recognised. */
 	void SendDisconnect(cClientHandle & a_Client, const AString & a_Reason);
 } ;
