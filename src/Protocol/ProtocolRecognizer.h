@@ -19,10 +19,7 @@
 protocol version instance and redirects everything to it. */
 namespace cProtocolRecognizer
 {
-	struct sUnsupportedButPingableProtocolException : public std::runtime_error
-	{
-		explicit sUnsupportedButPingableProtocolException();
-	};
+	using cProtocolDataInHandler = std::function<void(cByteBuffer &, std::string_view)>;
 
 	enum
 	{
@@ -47,10 +44,7 @@ namespace cProtocolRecognizer
 	a_SeenData represents a buffer for the incoming data.
 	a_Data contains a view of data that were just received. It is replaced with a sub-view, with handshake packet removed.
 	Returns the protocol if recognized. */
-	std::unique_ptr<cProtocol> TryRecogniseProtocol(cClientHandle & a_Client, cByteBuffer & a_SeenData, std::string_view & a_Data);
-
-	/** Replies to a client sending pings using a version we don't support. */
-	void RespondToUnsupportedProtocolPing(cClientHandle & a_Client, cByteBuffer & a_SeenData, const std::string_view a_Data);
+	cProtocolDataInHandler TryRecogniseProtocol(cClientHandle & a_Client, std::unique_ptr<cProtocol> & a_Protocol, cByteBuffer & a_SeenData, std::string_view & a_Data);
 
 	/** Sends a disconnect to the client as a result of a recognition error.
 	This function can be used to disconnect before any protocol has been recognised. */

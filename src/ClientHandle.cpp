@@ -73,42 +73,14 @@ cClientHandle::cClientHandle(const AString & a_IPString, int a_ViewDistance) :
 	m_IPString(a_IPString),
 	m_ReceivedData(8 KiB),  // We need a larger buffer to support BungeeCord - it sends one huge packet at the start
 	m_ProtocolDataInHandler(
-		[this](std::string_view a_Data)
+		[this](cByteBuffer & a_SeenData, std::string_view a_Data)
 		{
-			try
+			if (auto Handler = cProtocolRecognizer::TryRecogniseProtocol(*this, m_Protocol, a_SeenData, a_Data); Handler != nullptr)
 			{
-				// Note that a_Data is assigned to a subview containing the data to pass to m_Protocol or UnsupportedPing
-
-				m_Protocol = cProtocolRecognizer::TryRecogniseProtocol(*this, m_ReceivedData, a_Data);
-				if (m_Protocol == nullptr)
-				{
-					return;
-				}
-
-				// The protocol recogniser succesfully identified, switch mode:
-				m_ProtocolDataInHandler = [this](const std::string_view a_In)
-				{
-					// TODO: make it take our m_ReceivedData
-					m_Protocol->DataReceived(a_In.data(), a_In.size());
-				};
+				// Explicitly process any remaining data with the new handler:
+				m_ProtocolDataInHandler = Handler;
+				Handler(a_SeenData, a_Data);
 			}
-			catch (const cProtocolRecognizer::sUnsupportedButPingableProtocolException &)
-			{
-				// Got a server list ping for an unrecognised version,
-				// switch into responding to unknown protocols mode:
-				m_ProtocolDataInHandler = [this](const std::string_view a_In)
-				{
-					cProtocolRecognizer::RespondToUnsupportedProtocolPing(*this, m_ReceivedData, a_In);
-				};
-			}
-			catch (const std::exception & Oops)
-			{
-				Kick(Oops.what());
-				return;
-			}
-
-			// Explicitly process any remaining data with the new handler:
-			m_ProtocolDataInHandler(a_Data);
 		}
 	),
 	m_Player(nullptr),
@@ -3391,7 +3363,7 @@ void cClientHandle::ProcessProtocolInOut(void)
 
 	if (!IncomingData.empty())
 	{
-		m_ProtocolDataInHandler(IncomingData);
+		m_ProtocolDataInHandler(m_ReceivedData, IncomingData);
 	}
 
 	// Send any queued outgoing data:

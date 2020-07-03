@@ -26,10 +26,13 @@
 
 namespace cProtocolRecognizer
 {
-	sUnsupportedButPingableProtocolException::sUnsupportedButPingableProtocolException() :
-		std::runtime_error("")
+	struct sUnsupportedButPingableProtocolException : public std::runtime_error
 	{
-	}
+		explicit sUnsupportedButPingableProtocolException() :
+			std::runtime_error("")
+		{
+		}
+	};
 
 	struct sTriedToJoinWithUnsupportedProtocolException : public std::runtime_error
 	{
@@ -287,29 +290,8 @@ namespace cProtocolRecognizer
 
 
 
-	std::unique_ptr<cProtocol> TryRecogniseProtocol(cClientHandle & a_Client, cByteBuffer & a_SeenData, std::string_view & a_Data)
-	{
-		// We read more than the handshake packet here, oh well.
-		if (!a_SeenData.Write(a_Data.data(), a_Data.size()))
-		{
-			a_Client.Kick("Your client sent too much data; please try again later.");
-			return {};
-		}
-
-		auto Protocol = TryRecognizeProtocol(a_Client, a_SeenData, a_Data);
-		if (Protocol == nullptr)
-		{
-			a_SeenData.ResetRead();
-		}
-
-		return Protocol;
-	}
-
-
-
-
-
-	void RespondToUnsupportedProtocolPing(cClientHandle & a_Client, cByteBuffer & a_SeenData, const std::string_view a_Data)
+	/** Replies to a client sending pings using a version we don't support. */
+	static void RespondToUnsupportedProtocolPing(cClientHandle & a_Client, cByteBuffer & a_SeenData, const std::string_view a_Data)
 	{
 		if (!a_SeenData.Write(a_Data.data(), a_Data.size()))
 		{
@@ -352,6 +334,53 @@ namespace cProtocolRecognizer
 			}
 
 			a_SeenData.CommitRead();
+		}
+	}
+
+
+
+
+
+	cProtocolDataInHandler TryRecogniseProtocol(cClientHandle & a_Client, std::unique_ptr<cProtocol> & a_Protocol, cByteBuffer & a_SeenData, std::string_view & a_Data)
+	{
+		// We read more than the handshake packet here, oh well.
+		if (!a_SeenData.Write(a_Data.data(), a_Data.size()))
+		{
+			a_Client.Kick("Your client sent too much data; please try again later.");
+			return {};
+		}
+
+		try
+		{
+			// Note that a_Data is assigned to a subview containing the data to pass to m_Protocol or UnsupportedPing
+
+			a_Protocol = TryRecognizeProtocol(a_Client, a_SeenData, a_Data);
+			if (a_Protocol == nullptr)
+			{
+				a_SeenData.ResetRead();
+				return {};
+			}
+
+			// The protocol recogniser succesfully identified, switch mode:
+			return [RecognisedProtocol = a_Protocol.get()](cByteBuffer &, const std::string_view a_In)
+			{
+				// TODO: make it take our a_ReceivedData
+				RecognisedProtocol->DataReceived(a_In.data(), a_In.size());
+			};
+		}
+		catch (const cProtocolRecognizer::sUnsupportedButPingableProtocolException &)
+		{
+			// Got a server list ping for an unrecognised version,
+			// switch into responding to unknown protocols mode:
+			return [&a_Client](cByteBuffer & a_ReceivedData, const std::string_view a_In)
+			{
+				RespondToUnsupportedProtocolPing(a_Client, a_ReceivedData, a_In);
+			};
+		}
+		catch (const std::exception & Oops)
+		{
+			a_Client.Kick(Oops.what());
+			return {};
 		}
 	}
 

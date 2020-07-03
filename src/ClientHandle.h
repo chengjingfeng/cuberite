@@ -434,7 +434,7 @@ private:
 	cByteBuffer m_ReceivedData;
 
 	/** The function that's responsible for processing incoming protocol data. */
-	std::function<void(std::string_view)> m_ProtocolDataInHandler;
+	std::function<void(cByteBuffer &, std::string_view)> m_ProtocolDataInHandler;
 
 	/** Protects m_IncomingData against multithreaded access. */
 	cCriticalSection m_CSIncomingData;
