@@ -604,6 +604,9 @@ private:
 	Called by both Tick() and ServerTick(). */
 	void ProcessProtocolInOut(void);
 
+	/* Calls cProtocolRecognizer to identify what protocol version the client is using. */
+	void RecogniseProtocolFromData(cByteBuffer & a_SeenData, std::string_view a_Data);
+
 	// cTCPLink::cCallbacks overrides:
 	virtual void OnLinkCreated(cTCPLinkPtr a_Link) override;
 	virtual void OnReceivedData(const char * a_Data, size_t a_Length) override;

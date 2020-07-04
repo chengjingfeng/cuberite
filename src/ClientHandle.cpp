@@ -72,17 +72,7 @@ cClientHandle::cClientHandle(const AString & a_IPString, int a_ViewDistance) :
 	m_RequestedViewDistance(a_ViewDistance),
 	m_IPString(a_IPString),
 	m_ReceivedData(8 KiB),  // We need a larger buffer to support BungeeCord - it sends one huge packet at the start
-	m_ProtocolDataInHandler(
-		[this](cByteBuffer & a_SeenData, std::string_view a_Data)
-		{
-			if (auto Handler = cProtocolRecognizer::TryRecogniseProtocol(*this, m_Protocol, a_SeenData, a_Data); Handler != nullptr)
-			{
-				// Explicitly process any remaining data with the new handler:
-				m_ProtocolDataInHandler = Handler;
-				Handler(a_SeenData, a_Data);
-			}
-		}
-	),
+	m_ProtocolDataInHandler(std::bind(&cClientHandle::RecogniseProtocolFromData, this, std::placeholders::_1, std::placeholders::_2)),
 	m_Player(nullptr),
 	m_CachedSentChunk(0, 0),
 	m_HasSentDC(false),
@@ -3379,6 +3369,20 @@ void cClientHandle::ProcessProtocolInOut(void)
 	if ((Link != nullptr) && !OutgoingData.empty())
 	{
 		Link->Send(OutgoingData.data(), OutgoingData.size());
+	}
+}
+
+
+
+
+
+void cClientHandle::RecogniseProtocolFromData(cByteBuffer & a_SeenData, std::string_view a_Data)
+{
+	if (auto Handler = cProtocolRecognizer::TryRecogniseProtocol(*this, m_Protocol, a_SeenData, a_Data); Handler != nullptr)
+	{
+		// Explicitly process any remaining data with the new handler:
+		m_ProtocolDataInHandler = Handler;
+		Handler(a_SeenData, a_Data);
 	}
 }
 
